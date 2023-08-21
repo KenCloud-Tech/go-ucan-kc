@@ -1,8 +1,10 @@
 package go_ucan_kl
 
 import (
+	"encoding/json"
 	"fmt"
 	mb "github.com/multiformats/go-multibase"
+
 	"go-ucan-kl/capability"
 	"go-ucan-kl/key"
 	"strings"
@@ -28,11 +30,34 @@ type UcanHeader struct {
 }
 
 func (uh *UcanHeader) Encode() (string, error) {
-	return "", NotImplementedError
+	// todo: dose direct json bytes equal with the DagJson bytes, not sure?
+	jsonBytes, err := json.Marshal(uh)
+	if err != nil {
+		return "", err
+	}
+	//buffer := bytes.NewReader(jsonBytes)
+	//mapBuilder := basicnode.Prototype.Map.NewBuilder()
+	//err = dagjson.Decode(mapBuilder, buffer)
+	//if err != nil {
+	//	return "", err
+	//}
+	//
+	//node := mapBuilder.Build()
+	//resBuffer := new(bytes.Buffer)
+	//err = dagjson.Encode(node, resBuffer)
+	//if err != nil {
+	//	return "", err
+	//}
+	//
+	//return mb.Encode(mb.Base64url, resBuffer.Bytes())
+
+	return mb.Encode(mb.Base64url, jsonBytes)
 }
 
-func DecodeUcanHeaderBytes(uhBytes []byte) (uh *UcanHeader, err error) {
-	return nil, NotImplementedError
+func DecodeUcanHeaderBytes(uhBytes []byte) (*UcanHeader, error) {
+	uh := &UcanHeader{}
+	err := json.Unmarshal(uhBytes, uh)
+	return uh, err
 }
 
 type UcanPayload struct {
@@ -48,11 +73,33 @@ type UcanPayload struct {
 }
 
 func (up *UcanPayload) Encode() (string, error) {
-	return "", NotImplementedError
+	jsonBytes, err := json.Marshal(up)
+	if err != nil {
+		return "", err
+	}
+	//buffer := bytes.NewReader(jsonBytes)
+	//mapBuilder := basicnode.Prototype.Map.NewBuilder()
+	//err = dagjson.Decode(mapBuilder, buffer)
+	//if err != nil {
+	//	return "", err
+	//}
+	//
+	//node := mapBuilder.Build()
+	//resBuffer := new(bytes.Buffer)
+	//err = dagjson.Encode(node, resBuffer)
+	//if err != nil {
+	//	return "", err
+	//}
+	//
+	//return mb.Encode(mb.Base64url, resBuffer.Bytes())
+
+	return mb.Encode(mb.Base64url, jsonBytes)
 }
 
 func DecodeUcanPayloadBytes(upBytes []byte) (*UcanPayload, error) {
-	return nil, NotImplementedError
+	up := &UcanPayload{}
+	err := json.Unmarshal(upBytes, up)
+	return up, err
 }
 
 type Ucan struct {
@@ -83,7 +130,7 @@ func (uc *Ucan) Validate(checkTime *time.Time) error {
 }
 
 func (uc *Ucan) checkSignature() error {
-	keyMaterial, err := key.NewDidKeyPairFromString(uc.Payload.Iss)
+	keyMaterial, err := key.ParseDidStringAndGetVertifyKey(uc.Payload.Iss)
 	if err != nil {
 		return err
 	}

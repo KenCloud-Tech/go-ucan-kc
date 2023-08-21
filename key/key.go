@@ -28,6 +28,13 @@ var (
 	InvalidSigningMethod = fmt.Errorf("invalid signing method")
 )
 
+var (
+	DidKeyPairOne *DidKeyPair
+	DidOneStr     string
+	DidKeyPairTwo *DidKeyPair
+	DidTwoStr     string
+)
+
 type KeyMaterial interface {
 	GetJwtAlgorithmName() string
 	DidString() (string, error)
@@ -39,13 +46,14 @@ var _ KeyMaterial = &DidKeyPair{}
 
 // todo: sperate into different key type, Verify and Sign may be different
 type DidKeyPair struct {
-	pubKey  crypto.PubKey
-	privKey crypto.PrivKey
+	pubKey    crypto.PubKey
+	signKey   interface{}
+	verifyKey interface{}
 	jwt.SigningMethod
 	DIDString string
 }
 
-func NewDidKeyPairFromString(str string) (*DidKeyPair, error) {
+func NewDidKeyPairFromPrivateKeyString(str string) (*DidKeyPair, error) {
 	dkp := &DidKeyPair{}
 	privKeyBytes, err := base64.StdEncoding.DecodeString(str)
 	if err != nil {
@@ -55,18 +63,21 @@ func NewDidKeyPairFromString(str string) (*DidKeyPair, error) {
 	if err != nil {
 		return nil, err
 	}
-	dkp.privKey = privKey
+	rawPrivBytes, err := privKey.Raw()
+	if err != nil {
+		return nil, fmt.Errorf("getting private key bytes: %w", err)
+	}
 	dkp.pubKey = privKey.GetPublic()
-	//rawPrivBytes, err := privKey.Raw()
-	//if err != nil {
-	//	return nil, fmt.Errorf("getting private key bytes: %w", err)
-	//}
 
 	keyType := privKey.Type()
 	methodStr := ""
 	switch keyType {
 	case crypto.RSA:
 		methodStr = "RS256"
+		dkp.signKey, err = x509.ParsePKCS1PrivateKey(rawPrivBytes)
+		if err != nil {
+			return nil, err
+		}
 	case crypto.Ed25519:
 		methodStr = "EdDSA"
 	}
@@ -77,9 +88,54 @@ func NewDidKeyPairFromString(str string) (*DidKeyPair, error) {
 	return dkp, nil
 }
 
-//func (dkp *DidKeyPair) Sign(signingString string, key interface{}) (string, error){
-//	return dkp.SigningMethod.Sign(signingString, key)
-//}
+func ParseDidStringAndGetVertifyKey(did string) (*DidKeyPair, error) {
+	key := &DidKeyPair{}
+	if !strings.HasPrefix(did, KeyPrefix) {
+		return nil, fmt.Errorf("decentralized identifier is not a 'key' type")
+	}
+
+	str := strings.TrimPrefix(did, KeyPrefix+":")
+
+	enc, data, err := mb.Decode(str)
+	if err != nil {
+		return nil, fmt.Errorf("decoding multibase: %w", err)
+	}
+
+	if enc != mb.Base58BTC {
+		return nil, fmt.Errorf("unexpected multibase encoding: %s", mb.EncodingToStr[enc])
+	}
+
+	keyType, n, err := varint.FromUvarint(data)
+	if err != nil {
+		return nil, err
+	}
+
+	methodStr := ""
+	switch keyType {
+	case MulticodecKindRSAPubKey:
+		methodStr = "RS256"
+		pub, err := crypto.UnmarshalRsaPublicKey(data[n:])
+		if err != nil {
+			return nil, err
+		}
+		key.pubKey = pub
+	case MulticodecKindEd25519PubKey:
+		methodStr = "EdDSA"
+		pub, err := crypto.UnmarshalEd25519PublicKey(data[n:])
+		if err != nil {
+			return nil, err
+		}
+		key.pubKey = pub
+	}
+
+	verifyKey, err := key.getVerifyKey()
+	if err != nil {
+		return nil, err
+	}
+	key.verifyKey = verifyKey
+	key.SigningMethod = jwt.GetSigningMethod(methodStr)
+	return key, nil
+}
 
 func (dkp *DidKeyPair) DidString() (string, error) {
 	if dkp.DIDString != "" {
@@ -126,7 +182,7 @@ func (dkp *DidKeyPair) Verify(payload string, signature string) error {
 		return InvalidSigningMethod
 	}
 
-	return dkp.SigningMethod.Verify(payload, signature, dkp.pubKey)
+	return dkp.SigningMethod.Verify(payload, signature, dkp.verifyKey)
 }
 
 func (dkp *DidKeyPair) Sign(payload string) (string, error) {
@@ -134,7 +190,40 @@ func (dkp *DidKeyPair) Sign(payload string) (string, error) {
 		return "", InvalidSigningMethod
 	}
 
-	return dkp.SigningMethod.Sign(payload, dkp.privKey)
+	return dkp.SigningMethod.Sign(payload, dkp.signKey)
+}
+
+// VerifyKey returns the backing implementation for a public key, one of:
+// *rsa.PublicKey, ed25519.PublicKey
+func (dkp *DidKeyPair) getVerifyKey() (interface{}, error) {
+	if dkp.verifyKey != nil {
+		return dkp.verifyKey, nil
+	}
+	var verifyKey interface{}
+
+	rawPubBytes, err := dkp.pubKey.Raw()
+	if err != nil {
+		return nil, err
+	}
+	switch dkp.pubKey.Type() {
+	case crypto.RSA:
+		verifyKeyiface, err := x509.ParsePKIXPublicKey(rawPubBytes)
+		if err != nil {
+			return nil, err
+		}
+		var ok bool
+		verifyKey, ok = verifyKeyiface.(*rsa.PublicKey)
+		if !ok {
+			return nil, fmt.Errorf("public key is not an RSA key. got type: %T", verifyKeyiface)
+		}
+	case crypto.Ed25519:
+		verifyKey = ed25519.PublicKey(rawPubBytes)
+	default:
+		return nil, fmt.Errorf("unrecognized Public Key type: %s", dkp.pubKey.Type())
+	}
+
+	dkp.verifyKey = verifyKey
+	return verifyKey, nil
 }
 
 // ID is a DID:key identifier
@@ -211,42 +300,42 @@ func (id ID) VerifyKey() (interface{}, error) {
 }
 
 // Parse turns a string into a key method ID
-func Parse(keystr string) (ID, error) {
-	var id ID
-	if !strings.HasPrefix(keystr, KeyPrefix) {
-		return id, fmt.Errorf("decentralized identifier is not a 'key' type")
-	}
-
-	keystr = strings.TrimPrefix(keystr, KeyPrefix+":")
-
-	enc, data, err := mb.Decode(keystr)
-	if err != nil {
-		return id, fmt.Errorf("decoding multibase: %w", err)
-	}
-
-	if enc != mb.Base58BTC {
-		return id, fmt.Errorf("unexpected multibase encoding: %s", mb.EncodingToStr[enc])
-	}
-
-	keyType, n, err := varint.FromUvarint(data)
-	if err != nil {
-		return id, err
-	}
-
-	switch keyType {
-	case MulticodecKindRSAPubKey:
-		pub, err := crypto.UnmarshalRsaPublicKey(data[n:])
-		if err != nil {
-			return id, err
-		}
-		return ID{pub}, nil
-	case MulticodecKindEd25519PubKey:
-		pub, err := crypto.UnmarshalEd25519PublicKey(data[n:])
-		if err != nil {
-			return id, err
-		}
-		return ID{pub}, nil
-	}
-
-	return id, fmt.Errorf("unrecognized key type multicodec prefix: %x", data[0])
-}
+//func Parse(keystr string) (ID, error) {
+//	var id ID
+//	if !strings.HasPrefix(keystr, KeyPrefix) {
+//		return id, fmt.Errorf("decentralized identifier is not a 'key' type")
+//	}
+//
+//	keystr = strings.TrimPrefix(keystr, KeyPrefix+":")
+//
+//	enc, data, err := mb.Decode(keystr)
+//	if err != nil {
+//		return id, fmt.Errorf("decoding multibase: %w", err)
+//	}
+//
+//	if enc != mb.Base58BTC {
+//		return id, fmt.Errorf("unexpected multibase encoding: %s", mb.EncodingToStr[enc])
+//	}
+//
+//	keyType, n, err := varint.FromUvarint(data)
+//	if err != nil {
+//		return id, err
+//	}
+//
+//	switch keyType {
+//	case MulticodecKindRSAPubKey:
+//		pub, err := crypto.UnmarshalRsaPublicKey(data[n:])
+//		if err != nil {
+//			return id, err
+//		}
+//		return ID{pub}, nil
+//	case MulticodecKindEd25519PubKey:
+//		pub, err := crypto.UnmarshalEd25519PublicKey(data[n:])
+//		if err != nil {
+//			return id, err
+//		}
+//		return ID{pub}, nil
+//	}
+//
+//	return id, fmt.Errorf("unrecognized key type multicodec prefix: %x", data[0])
+//}
