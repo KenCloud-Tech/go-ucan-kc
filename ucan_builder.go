@@ -1,9 +1,11 @@
 package go_ucan_kl
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/ipfs/go-cid"
 	mb "github.com/multiformats/go-multibase"
-	"go-ucan-kl/capability"
+	. "go-ucan-kl/capability"
 	didkey "go-ucan-kl/key"
 	"math/rand"
 	"time"
@@ -12,11 +14,27 @@ import (
 // todo: just for test
 var randSource = rand.New(rand.NewSource(time.Now().Unix()))
 
+func mustJson(a interface{}) interface{} {
+	var jsonBytes []byte
+	switch a.(type) {
+	case string:
+		jsonBytes = []byte(a.(string))
+	case []byte:
+		jsonBytes = a.([]byte)
+	}
+
+	if json.Valid(jsonBytes) {
+		return a
+	} else {
+		panic(fmt.Sprintf("%v is not json object", a))
+	}
+}
+
 type UcanBuilder struct {
 	issuer   didkey.KeyMaterial
 	audience string
 
-	capabilities []capability.Capability
+	capabilities []Capability
 	lifetime     uint64
 	expiration   int64
 	notBefore    int64
@@ -26,9 +44,9 @@ type UcanBuilder struct {
 	addNonce bool
 }
 
-func Default() *UcanBuilder {
+func DefaultBuilder() *UcanBuilder {
 	return &UcanBuilder{
-		capabilities: make([]capability.Capability, 0),
+		capabilities: make([]Capability, 0),
 		facts:        make(map[string]interface{}),
 		proofs:       make([]string, 0),
 	}
@@ -60,7 +78,7 @@ func (ub *UcanBuilder) WithNotBefore(timestamp int64) *UcanBuilder {
 }
 
 func (ub *UcanBuilder) WithFact(key string, fact interface{}) *UcanBuilder {
-	ub.facts[key] = fact
+	ub.facts[key] = mustJson(fact)
 	return ub
 }
 
@@ -69,10 +87,52 @@ func (ub *UcanBuilder) WithNonce() *UcanBuilder {
 	return ub
 }
 
+func (ub *UcanBuilder) WitnessedBy(authority *Ucan, prefix *cid.Prefix) *UcanBuilder {
+	c, _, err := authority.ToCid(prefix)
+	if err != nil {
+		panic(err.Error())
+	}
+	ub.proofs = append(ub.proofs, c.String())
+	return ub
+}
+
+func (ub *UcanBuilder) ClaimingCapability(capability *Capability) *UcanBuilder {
+	ub.capabilities = append(ub.capabilities, *capability)
+	return ub
+}
+
+func (ub *UcanBuilder) ClaimingCapabilities(capabilities []*Capability) *UcanBuilder {
+	for _, c := range capabilities {
+		ub.capabilities = append(ub.capabilities, *c)
+	}
+	return ub
+}
+
+func (ub *UcanBuilder) DelegatingFrom(authority *Ucan, prefix *cid.Prefix) *UcanBuilder {
+	c, _, err := authority.ToCid(prefix)
+	if err != nil {
+		panic(err.Error())
+	}
+	ub.proofs = append(ub.proofs, c.String())
+	prfIdx := len(ub.proofs) - 1
+	capability, err := ProofDelegationSemantics.Parse(fmt.Sprintf("prf:%d", prfIdx), "ucan/DELEGATE", nil)
+	if err != nil {
+		panic(err.Error())
+	}
+	ub.capabilities = append(ub.capabilities, Capability{
+		Resource: capability.Resource.ToString(),
+		Ability:  capability.Ability.ToString(),
+		Caveat:   capability.Caveat,
+	})
+	return ub
+}
+
 func (ub *UcanBuilder) Expiration() *int64 {
 	if ub.expiration == 0 {
 		if ub.lifetime == 0 {
-			panic("expiration and lifetime can not both be empty")
+			//panic("expiration and lifetime can not both be empty")
+			// todo forever valid
+			return nil
 		}
 		exp := int64(ub.lifetime) + time.Now().Unix()
 		return &exp
@@ -111,7 +171,7 @@ func (ub *UcanBuilder) Build() (*Ucan, error) {
 		return nil, err
 	}
 
-	caps, err := capability.BuildCapsFromArray(ub.capabilities)
+	caps, err := BuildCapsFromArray(ub.capabilities)
 	if err != nil {
 		return nil, err
 	}

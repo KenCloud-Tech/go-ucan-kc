@@ -16,7 +16,7 @@ type Abilities map[string][]interface{}
 
 // Capabilities is a set of all Capabilities
 //
-// A capability is the association of an "ability" to a "resource": resource x ability x caveats.
+// A capability is the association of an "Ability" to a "Resource": Resource x Ability x caveats.
 // { $RESOURCE: { $ABILITY: [ $CAVEATS ] } }
 //
 //{
@@ -48,6 +48,26 @@ type Abilities map[string][]interface{}
 
 type Capabilities map[string]Abilities
 
+func (caps Capabilities) ToCapsArray() []Capability {
+	capArray := make([]Capability, 0)
+	for res, abi := range caps {
+		for abiName, cavs := range abi {
+			if len(cavs) == 0 {
+				continue
+			}
+			for _, cav := range cavs {
+				cap := Capability{
+					Resource: res,
+					Ability:  abiName,
+					Caveat:   cav,
+				}
+				capArray = append(capArray, cap)
+			}
+		}
+	}
+	return capArray
+}
+
 func BuildCapsFromArray(capArray []Capability) (Capabilities, error) {
 	caps := make(Capabilities)
 	for _, capability := range capArray {
@@ -63,9 +83,9 @@ func BuildCapsFromArray(capArray []Capability) (Capabilities, error) {
 			resource = res
 		}
 
-		// todo not sure, check whether caveat is a json object
+		// todo not sure, check whether Caveat is a json object
 		if !json.Valid(caveat.([]byte)) {
-			return nil, fmt.Errorf("caveat must be an json object, %v", caveat)
+			return nil, fmt.Errorf("Caveat must be an json object, %v", caveat)
 		}
 
 		if _, ok := resource[ability]; ok {

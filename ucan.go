@@ -1,9 +1,12 @@
 package go_ucan_kl
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/ipfs/go-cid"
 	mb "github.com/multiformats/go-multibase"
+	"go-ucan-kl/store"
 
 	"go-ucan-kl/capability"
 	"go-ucan-kl/key"
@@ -137,6 +140,30 @@ func (uc *Ucan) checkSignature() error {
 	return keyMaterial.Verify(string(uc.DataToSign), string(uc.Signature))
 }
 
+func (uc *Ucan) Audience() string {
+	return uc.Payload.Aud
+}
+
+func (uc *Ucan) Issuer() string {
+	return uc.Payload.Iss
+}
+
+func (uc *Ucan) Proofs() []string {
+	return uc.Payload.Prf
+}
+
+func (uc *Ucan) Capabilities() capability.Capabilities {
+	return uc.Payload.Caps
+}
+
+func (uc *Ucan) Expires() *int64 {
+	return uc.Payload.Exp
+}
+
+func (uc *Ucan) NotBefore() *int64 {
+	return uc.Payload.Nbf
+}
+
 func (uc *Ucan) isExpired(checkTime *time.Time) bool {
 	exp := uc.Payload.Exp
 	if exp == nil {
@@ -169,6 +196,30 @@ func (uc *Ucan) isTooEarly(checkTime *time.Time) bool {
 	return *nbf > timeInt
 }
 
+func (uc *Ucan) LifetimeBeginsBefore(other *Ucan) bool {
+	if uc.Payload.Nbf == nil {
+		return true
+	} else if other.Payload.Nbf == nil {
+		return false
+	} else {
+		return *uc.Payload.Nbf <= *other.Payload.Nbf
+	}
+}
+
+func (uc *Ucan) LifetimeEndsAfter(other *Ucan) bool {
+	if uc.Payload.Exp == nil {
+		return true
+	} else if other.Payload.Exp == nil {
+		return false
+	} else {
+		return *uc.Payload.Exp >= *other.Payload.Exp
+	}
+}
+
+func (uc *Ucan) LifetimeEncompasses(other *Ucan) bool {
+	return uc.LifetimeBeginsBefore(other) && uc.LifetimeEndsAfter(other)
+}
+
 func (uc *Ucan) Encode() (string, error) {
 	header, err := uc.Header.Encode()
 	if err != nil {
@@ -184,6 +235,34 @@ func (uc *Ucan) Encode() (string, error) {
 	}
 
 	return header + "." + payload + "." + signature, nil
+}
+
+func (uc *Ucan) ToCid(prefix *cid.Prefix) (cid.Cid, string, error) {
+	if prefix == nil {
+		prefix = &store.DefaultPrefix
+	} else {
+		if prefix.Codec != cid.Raw {
+			return cid.Undef, "", fmt.Errorf("Ucan cid codec must be RawCodec(0x55)")
+		}
+	}
+	ucanStr, err := uc.Encode()
+	if err != nil {
+		return cid.Undef, "", err
+	}
+	c, err := prefix.Sum([]byte(ucanStr))
+	return c, "", err
+}
+
+func (uc *Ucan) Equals(other *Ucan) bool {
+	ucBytes, err := json.Marshal(uc)
+	if err != nil {
+		panic(err.Error())
+	}
+	otherBytes, err := json.Marshal(other)
+	if err != nil {
+		panic(err.Error())
+	}
+	return bytes.Equal(ucBytes, otherBytes)
 }
 
 func DecodeUcanString(ucStr string) (*Ucan, error) {
