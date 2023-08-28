@@ -31,19 +31,19 @@ func (p ProofSelection) Contains(other Scope) bool {
 	}
 }
 
-func (p ProofSelection) ParseScope(url url.URL) Scope {
+func (p ProofSelection) ParseScope(url url.URL) (Scope, error) {
 	switch url.Scheme {
 	case "prf":
 		if url.Path == "*" {
-			return &ProofSelection{-1}
+			return &ProofSelection{-1}, nil
 		}
 		idx, err := strconv.Atoi(url.Path)
 		if err != nil {
 			panic(err.Error())
 		}
-		return &ProofSelection{idx}
+		return &ProofSelection{idx}, nil
 	default:
-		panic(fmt.Sprintf("unsupported schema %s", url.Scheme))
+		return nil, fmt.Errorf("unsupported schema %s", url.Scheme)
 	}
 }
 
@@ -53,11 +53,23 @@ type ProofAction struct {
 	str string
 }
 
-func (p ProofAction) ParseAbility(str string) Ability {
-	if str == "ucan/DELEGATE" {
-		return &ProofAction{str: "Delegate"}
+func (p ProofAction) Compare(abi Ability) int {
+	if other, ok := abi.(*ProofAction); ok {
+		if p.str == other.str {
+			return 0
+		} else {
+			panic(fmt.Sprintf("Unsupported comparing between %#v and %#v", p, other))
+		}
 	}
-	panic(fmt.Sprintf("Unsupported action for proof Resource %s", str))
+	panic(fmt.Sprintf("comparing between different ability: %t and %t", p, abi))
+
+}
+
+func (p ProofAction) ParseAbility(str string) (Ability, error) {
+	if str == "ucan/DELEGATE" {
+		return &ProofAction{str: "Delegate"}, nil
+	}
+	return nil, fmt.Errorf("Unsupported action for proof Resource %s", str)
 }
 
 func (p ProofAction) ToString() string {

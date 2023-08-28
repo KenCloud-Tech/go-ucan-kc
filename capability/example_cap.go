@@ -19,12 +19,12 @@ func (e EmailAddress) Contains(other Scope) bool {
 	}
 }
 
-func (e EmailAddress) ParseScope(url url.URL) Scope {
+func (e EmailAddress) ParseScope(url url.URL) (Scope, error) {
 	switch url.Scheme {
 	case "mailto":
-		return &EmailAddress{url.Path}
+		return &EmailAddress{url.Path}, nil
 	default:
-		panic(fmt.Sprintf("Could not interpret URI as an email address: %s", url.String()))
+		return nil, fmt.Errorf("Could not interpret URI as an email address: %s", url.String())
 	}
 }
 
@@ -36,11 +36,18 @@ var _ Ability = &EmailAction{}
 
 type EmailAction struct{}
 
-func (e EmailAction) ParseAbility(str string) Ability {
-	if str == "email/send" {
-		return &EmailAction{}
+func (e EmailAction) Compare(abi Ability) int {
+	if _, ok := abi.(*EmailAction); ok {
+		return 0
 	}
-	panic(fmt.Sprintf("Unrecognized action: %s", str))
+	panic(fmt.Sprintf("comparing between different ability: %t and %t", e, abi))
+}
+
+func (e EmailAction) ParseAbility(str string) (Ability, error) {
+	if str == "email/send" {
+		return &EmailAction{}, nil
+	}
+	return nil, fmt.Errorf("Unrecognized action: %s", str)
 }
 
 func (e EmailAction) ToString() string {

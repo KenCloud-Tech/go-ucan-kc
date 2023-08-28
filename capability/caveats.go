@@ -1,5 +1,11 @@
 package capability
 
+import (
+	"encoding/json"
+	"fmt"
+	go_ucan_kl "go-ucan-kl"
+)
+
 type Caveat struct {
 	caveat map[string]interface{}
 }
@@ -35,4 +41,17 @@ func (c *Caveat) equalOrContain(other *Caveat) bool {
 		}
 	}
 	return true
+}
+
+func BuildCaveat(val interface{}) (Caveat, error) {
+	if ok, jsonBytes := go_ucan_kl.IsJson(val); ok {
+		mp := make(map[string]interface{})
+		err := json.Unmarshal(jsonBytes, &mp)
+		if err != nil {
+			return Caveat{}, err
+		}
+		return Caveat{mp}, nil
+	}
+
+	return Caveat{}, fmt.Errorf("caveat must be json object, but got %v", val)
 }

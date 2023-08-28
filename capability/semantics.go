@@ -7,15 +7,20 @@ import (
 	"strings"
 )
 
+var (
+	TypeParseError = fmt.Errorf("type parse error")
+)
+
 type Scope interface {
 	Contains(other Scope) bool
-	ParseScope(url url.URL) Scope
+	ParseScope(url url.URL) (Scope, error)
 	ToString() string
 }
 
 type Ability interface {
-	ParseAbility(str string) Ability
+	ParseAbility(str string) (Ability, error)
 	ToString() string
+	Compare(abi Ability) int
 }
 
 type ResourceUri struct {
@@ -39,6 +44,21 @@ type CapabilityView struct {
 	Resource Resource
 	Ability  Ability
 	Caveat   interface{}
+}
+
+func (cv *CapabilityView) Enables(other *CapabilityView) bool {
+	caveat, err := BuildCaveat(cv.Caveat)
+	if err != nil {
+		return false
+	}
+	otherCaveat, err := BuildCaveat(other.Caveat)
+	if err != nil {
+		return false
+	}
+
+	return cv.Resource.Contains(&other.Resource) &&
+		cv.Ability.Compare(other.Ability) >= 0 &&
+		caveat.enables(&otherCaveat)
 }
 
 func (cv *CapabilityView) ToCapability() *Capability {
@@ -131,9 +151,13 @@ func (cs CapabilitySemantics[S, A]) parseResource(resource *url.URL) (ResourceUr
 		}, nil
 	default:
 		var scope S
+		sc, err := scope.ParseScope(*resource)
+		if err != nil {
+			return ResourceUri{}, fmt.Errorf("%s : failed to parse resource:%s as %T, err: %v", TypeParseError, resource.String(), scope, err)
+		}
 		return ResourceUri{
 			isScope: true,
-			scope:   scope.ParseScope(*resource),
+			scope:   sc,
 		}, nil
 	}
 }
@@ -208,9 +232,14 @@ func (cs CapabilitySemantics[S, A]) Parse(resource string, ability string, cavea
 	}
 
 	var abi A
+	capAbi, err := abi.ParseAbility(ability)
+	if err != nil {
+		return nil, fmt.Errorf("%s : failed to parse ability:%s as %T, err: %v", TypeParseError, ability, abi, err)
+	}
+
 	cv := &CapabilityView{
 		Resource: *res,
-		Ability:  abi.ParseAbility(ability),
+		Ability:  capAbi,
 		Caveat:   cs.parseCaveat(caveat),
 	}
 	return cv, nil

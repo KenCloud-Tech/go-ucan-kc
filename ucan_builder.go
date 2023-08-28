@@ -21,6 +21,8 @@ func mustJson(a interface{}) interface{} {
 		jsonBytes = []byte(a.(string))
 	case []byte:
 		jsonBytes = a.([]byte)
+	default:
+		panic(fmt.Sprintf("%v is not json object", a))
 	}
 
 	if json.Valid(jsonBytes) {
@@ -28,6 +30,20 @@ func mustJson(a interface{}) interface{} {
 	} else {
 		panic(fmt.Sprintf("%v is not json object", a))
 	}
+}
+
+func IsJson(a interface{}) (bool, []byte) {
+	var jsonBytes []byte
+	switch a.(type) {
+	case string:
+		jsonBytes = []byte(a.(string))
+	case []byte:
+		jsonBytes = a.([]byte)
+	default:
+		return false, nil
+	}
+
+	return json.Valid(jsonBytes), jsonBytes
 }
 
 type UcanBuilder struct {
