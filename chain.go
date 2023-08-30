@@ -5,6 +5,8 @@ import (
 	"github.com/ipfs/go-cid"
 	. "go-ucan-kl/capability"
 	"go-ucan-kl/store"
+	"golang.org/x/exp/maps"
+
 	"strings"
 	"time"
 )
@@ -35,28 +37,30 @@ func (pc *ProofChain) validateLinkTo(uc *Ucan) error {
 	return fmt.Errorf("Invalid UCAN link: audience %s does not match issuer %s", audience, issuer)
 }
 
-func (pc *ProofChain) ReduceCapabilities(cs *CapabilitySemantics[Scope, Ability]) (*CapabilityInfo, error) {
+func (pc *ProofChain) ReduceCapabilities(cs *CapabilitySemantics[Scope, Ability]) ([]*CapabilityInfo, error) {
 	ancestralCapabilityInfos := make([]*CapabilityInfo, 0)
 	for idx, prf := range pc.proofs {
 		if _, exist := pc.redelegations[idx]; exist {
 		} else {
-			capInfo, err := prf.ReduceCapabilities(cs)
+			capInfos, err := prf.ReduceCapabilities(cs)
 			if err != nil {
 				return nil, err
 			}
-			ancestralCapabilityInfos = append(ancestralCapabilityInfos, capInfo)
+			ancestralCapabilityInfos = append(ancestralCapabilityInfos, capInfos...)
 		}
 	}
 
 	redelegatedCapabilityInfos := make([]*CapabilityInfo, 0)
 	for idx, _ := range pc.redelegations {
-		capInfo, err := pc.proofs[idx].ReduceCapabilities(cs)
+		capInfos, err := pc.proofs[idx].ReduceCapabilities(cs)
 		if err != nil {
 			return nil, err
 		}
-		capInfo.notBefore = pc.ucan.NotBefore()
-		capInfo.expires = pc.ucan.Expires()
-		redelegatedCapabilityInfos = append(redelegatedCapabilityInfos, capInfo)
+		for _, capInfo := range capInfos {
+			capInfo.notBefore = pc.ucan.NotBefore()
+			capInfo.expires = pc.ucan.Expires()
+			redelegatedCapabilityInfos = append(redelegatedCapabilityInfos, capInfo)
+		}
 	}
 
 	selfCapabilities := make([]*CapabilityView, 0)
@@ -111,6 +115,23 @@ func (pc *ProofChain) ReduceCapabilities(cs *CapabilitySemantics[Scope, Ability]
 
 	selfCapabilityInfos = append(selfCapabilityInfos, redelegatedCapabilityInfos...)
 
+	mergedCapabilityInfos := make([]*CapabilityInfo, 0)
+Merge:
+	if len(selfCapabilityInfos) > 0 {
+		capInfo := selfCapabilityInfos[len(selfCapabilityInfos)-1]
+		selfCapabilityInfos = selfCapabilityInfos[:len(selfCapabilityInfos)-1]
+		for _, remainCapInfo := range selfCapabilityInfos {
+			if remainCapInfo.capability.Enables(&capInfo.capability) {
+				maps.Copy(remainCapInfo.originators, capInfo.originators)
+				continue Merge
+			}
+		}
+		mergedCapabilityInfos = append(mergedCapabilityInfos, capInfo)
+	} else {
+		return mergedCapabilityInfos, nil
+	}
+
+	return mergedCapabilityInfos, nil
 }
 
 func ProofChainFromUcan(uc *Ucan, nowTime *time.Time, store store.UcanStore) (*ProofChain, error) {
