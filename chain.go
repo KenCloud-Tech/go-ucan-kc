@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/ipfs/go-cid"
 	. "go-ucan-kl/capability"
-	"go-ucan-kl/store"
 	"golang.org/x/exp/maps"
 
 	"strings"
@@ -123,7 +122,7 @@ Merge:
 		for _, remainCapInfo := range selfCapabilityInfos {
 			if remainCapInfo.capability.Enables(&capInfo.capability) {
 				maps.Copy(remainCapInfo.originators, capInfo.originators)
-				continue Merge
+				goto Merge
 			}
 		}
 		mergedCapabilityInfos = append(mergedCapabilityInfos, capInfo)
@@ -134,7 +133,7 @@ Merge:
 	return mergedCapabilityInfos, nil
 }
 
-func ProofChainFromUcan(uc *Ucan, nowTime *time.Time, store store.UcanStore) (*ProofChain, error) {
+func ProofChainFromUcan(uc *Ucan, nowTime *time.Time, store UcanStore) (*ProofChain, error) {
 	err := uc.Validate(nowTime)
 	if err != nil {
 		return nil, err
@@ -198,7 +197,7 @@ func ProofChainFromUcan(uc *Ucan, nowTime *time.Time, store store.UcanStore) (*P
 	}, nil
 }
 
-func ProofChainFromUcanStr(ucanStr string, nowTime *time.Time, store store.UcanStore) (*ProofChain, error) {
+func ProofChainFromUcanStr(ucanStr string, nowTime *time.Time, store UcanStore) (*ProofChain, error) {
 	ucan, err := DecodeUcanString(ucanStr)
 	if err != nil {
 		return nil, err
@@ -206,7 +205,7 @@ func ProofChainFromUcanStr(ucanStr string, nowTime *time.Time, store store.UcanS
 	return ProofChainFromUcan(ucan, nowTime, store)
 }
 
-func ProofChainFromUcanCid(c cid.Cid, nowTime *time.Time, store store.UcanStore) (*ProofChain, error) {
+func ProofChainFromUcanCid(c cid.Cid, nowTime *time.Time, store UcanStore) (*ProofChain, error) {
 	ucan, err := store.ReadUcan(c)
 	if err != nil {
 		return nil, err

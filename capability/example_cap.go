@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+var EmailSemantics = CapabilitySemantics[EmailAddress, EmailAction]{}
+
 var _ Scope = &EmailAddress{}
 
 type EmailAddress struct {
@@ -54,6 +56,8 @@ func (e EmailAction) ParseAbility(str string) (Ability, error) {
 func (e EmailAction) ToString() string {
 	return "email/send"
 }
+
+var WNFSSemantics = CapabilitySemantics[WNFSScope, WNFSCapLevel]{}
 
 var _ Scope = &WNFSScope{}
 
@@ -147,7 +151,7 @@ func (w WNFSCapLevel) Compare(abi Ability) int {
 	var otherWeight = -1
 	//var ok bool
 	if otherWNFS, ok := abi.(*WNFSCapLevel); !ok {
-		panic(fmt.Sprintf("comparing between different ability: %t and %t", w, abi))
+		panic(fmt.Sprintf("comparing between different ability: %T and %T", w, abi))
 	} else {
 		if otherWeight, ok = levelMap[otherWNFS.level]; !ok {
 			panic(fmt.Sprintf("invalid WNFSCapLevel: %s", otherWNFS.level))

@@ -61,7 +61,7 @@ func (p ProofAction) Compare(abi Ability) int {
 			panic(fmt.Sprintf("Unsupported comparing between %#v and %#v", p, other))
 		}
 	}
-	panic(fmt.Sprintf("comparing between different ability: %t and %t", p, abi))
+	panic(fmt.Sprintf("comparing between different ability: %T and %T", p, abi))
 
 }
 

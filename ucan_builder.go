@@ -32,20 +32,6 @@ func mustJson(a interface{}) interface{} {
 	}
 }
 
-func IsJson(a interface{}) (bool, []byte) {
-	var jsonBytes []byte
-	switch a.(type) {
-	case string:
-		jsonBytes = []byte(a.(string))
-	case []byte:
-		jsonBytes = a.([]byte)
-	default:
-		return false, nil
-	}
-
-	return json.Valid(jsonBytes), jsonBytes
-}
-
 type UcanBuilder struct {
 	issuer   didkey.KeyMaterial
 	audience string

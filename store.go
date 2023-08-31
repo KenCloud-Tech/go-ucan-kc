@@ -1,10 +1,9 @@
-package store
+package go_ucan_kl
 
 import (
 	"fmt"
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
-	. "go-ucan-kl"
 )
 
 var DefaultPrefix = cid.Prefix{

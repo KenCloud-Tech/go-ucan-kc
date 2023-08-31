@@ -3,13 +3,13 @@ package fixtures
 import didkey "go-ucan-kl/key"
 
 type Identities struct {
-	AliceKey didkey.KeyMaterial
-	BobKey   didkey.KeyMaterial
-	//MalloryKey didkey.KeyMaterial
+	AliceKey   didkey.KeyMaterial
+	BobKey     didkey.KeyMaterial
+	MalloryKey didkey.KeyMaterial
 
-	AliceDidString string
-	BobDidString   string
-	//MalloryDidString string
+	AliceDidString   string
+	BobDidString     string
+	MalloryDidString string
 }
 
 var TestIdentities Identities
@@ -34,9 +34,12 @@ func init() {
 		panic(err.Error())
 	}
 
-	//TestIdentities.MalloryKey, err = didkey.Parse("LR9AL2MYkMARuvmV3MJV8sKvbSOdBtpggFCW8K62oZDR6UViSXdSV/dDcD8S9xVjS61vh62JITx7qmLgfQUSZQ==")
-	//if err != nil {
-	//	panic(err.Error())
-	//}
-	//TestIdentities.MalloryDidString = TestIdentities.MalloryKey.String()
+	TestIdentities.MalloryKey, err = didkey.NewDidKeyPairFromPrivateKeyString("CAASqQkwggSlAgEAAoIBAQDVWxsDBdxAB8YzHnkF06gIHgwH2MjFeluN8k5FQV98INgc/rVa9smA/f4h5/fCVTP16y7hA7UlCBzb5uITgF5zgc3L7vwsl0fXhLemQ5+rQCujWte/ScHxTzX66LjVzAQIiH3ZSsGCwoFDh839wZVeHDYFkV4O2UHeDMoOWQs8pgN4sBlSbVQwuOnYq0sX9LHLXNfnmeUBiig9hptLlr3jBP+OugbRWV4IEdxNDCq4LAkQU+AO2A7aAgtNAA17PcVqgOQXHkGSyuP9n+lfsRrkAudJ/atfF0GHw5/lwz+67kI/MVIyt1xsA7Oen+ua6jc/ceX1qJttkwoYOZ4sBfRXAgMBAAECggEBANGhr5u7wVnkiZimo1DXUy2OoFGBbluiSpzg7Ijdn70t5Eow9e5Ht1uXtICKFIUMBH7nsusCIpUdMIXciFuS8LrbWmK7EWmaxsr6qxuhLBwuc/IQixV3mijIpIhA64Od7oSX39eFvTcGd83rfLmM4H9UhrvXxiweybospMeONB1EUNJh14wNchfUqcdwpNb45PfRtw7pmg7yUQuHw7zd+ZaGp3qPnSL69lfz4QG7z1IZgHM6mGuvMuIT2S5mHYvkz0LjrEADpsBtso3b/ouxQGI2chMjxttS3A5DTHTCznHQ2vfwTWBHLWnu6grN22li73pkG4HqvS7lqf0Aa1PWypkCgYEA+MQLIfmVhRxF+8jyv6HFvt8Z7NVJ+iIeHdExEywZYi1zE1bu6vvXAg10IJFkOspoXYYXanifkgz0uCniXg7Um5oGgOWAKp/DVzIokt7SJcwb5auKxXRK3QMy0WVq3pYlzDqUjIvYyUx9wft77qmmh4j2kvwihwZo9QRix23lirMCgYEA249zPGEq/E4YjvT9x0y8J3EJDNJfyL5+poVw0bBRR3KasFpKCNccaXn3Gs2D28nu3dsouNAYRF/W+jnlF81wBEIYvhW+vfitUO6hzK7WZMgb6YxkbU8z95UQHCwS24ic4qz1It59W156tHtfiJaEKbntHiWhxO60ZsPlf98AEc0CgYBP4QOCIVZ1q6J9OwVXq2aH57O3bLWYcCQjhuyvL1XnRJjS+PM22S8tJYzIeGcqyZvBjDEwqxLyHt7l0+0wLqruXAMCmK8TAMIE2cJVht8L7AJ5OSAST0lKtqA2xM4QMz5n2dehWbZ+zOUEyO/+rtMeakhi4jtkCBbjtkjRqOQwKQKBgQDGMWStcW0TGhATI9XdzUffNqsbtt+d30+GU9h2gHmuTCaU4LwJ5NwR3nYP7MqFYXBNNmM5CSeOuRDfCdniNaFTRrL9C7YF2G/jKbZGhOClUvnXRdL11VQsvpMvSx2urFAqUkRqOHriOpP7TY78RhqBbAM+fmvb0DpqtZT6a7utVQKBgQDzUcaRJiIDu/t0V/davh2dqtGcVSyptRGex2Vcb66nST0ojokWo6FZa4fLIOwoNmUA+fpxaH/vzG+tzBnGkJ3+Kw7Je8/X2U7PFkZysYMYFHS30pu5FaBvmqgl36I7vkFnz0GvJj5ZRDRAQrScZGbHHJqyomB0Oq5dKZLZ1ngYug==")
+	if err != nil {
+		panic(err.Error())
+	}
+	TestIdentities.MalloryDidString, err = TestIdentities.MalloryKey.DidString()
+	if err != nil {
+		panic(err.Error())
+	}
 }

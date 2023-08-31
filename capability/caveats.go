@@ -3,7 +3,8 @@ package capability
 import (
 	"encoding/json"
 	"fmt"
-	go_ucan_kl "go-ucan-kl"
+	"go-ucan-kl/util"
+	//go_ucan_kl "go-ucan-kl"
 )
 
 type Caveat struct {
@@ -44,7 +45,7 @@ func (c *Caveat) equalOrContain(other *Caveat) bool {
 }
 
 func BuildCaveat(val interface{}) (Caveat, error) {
-	if ok, jsonBytes := go_ucan_kl.IsJson(val); ok {
+	if ok, jsonBytes := util.IsJson(val); ok {
 		mp := make(map[string]interface{})
 		err := json.Unmarshal(jsonBytes, &mp)
 		if err != nil {

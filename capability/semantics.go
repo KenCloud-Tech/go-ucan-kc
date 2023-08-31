@@ -123,7 +123,7 @@ func (r *Resource) Contains(other *Resource) bool {
 			return false
 		}
 	default:
-		panic(fmt.Sprintf("Unsupported Resource type: %d", r.Type.Name()))
+		panic(fmt.Sprintf("Unsupported Resource type: %s", r.Type.Name()))
 	}
 }
 

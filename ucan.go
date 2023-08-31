@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"github.com/ipfs/go-cid"
 	mb "github.com/multiformats/go-multibase"
-	"go-ucan-kl/store"
-
 	"go-ucan-kl/capability"
 	"go-ucan-kl/key"
 	"strings"
@@ -160,6 +158,14 @@ func (uc *Ucan) Expires() *int64 {
 	return uc.Payload.Exp
 }
 
+func (uc *Ucan) Facts() map[string]interface{} {
+	return uc.Payload.Fct
+}
+
+func (uc *Ucan) Nonce() string {
+	return uc.Payload.Nnc
+}
+
 func (uc *Ucan) NotBefore() *int64 {
 	return uc.Payload.Nbf
 }
@@ -239,7 +245,7 @@ func (uc *Ucan) Encode() (string, error) {
 
 func (uc *Ucan) ToCid(prefix *cid.Prefix) (cid.Cid, string, error) {
 	if prefix == nil {
-		prefix = &store.DefaultPrefix
+		prefix = &DefaultPrefix
 	} else {
 		if prefix.Codec != cid.Raw {
 			return cid.Undef, "", fmt.Errorf("Ucan cid codec must be RawCodec(0x55)")
@@ -250,7 +256,7 @@ func (uc *Ucan) ToCid(prefix *cid.Prefix) (cid.Cid, string, error) {
 		return cid.Undef, "", err
 	}
 	c, err := prefix.Sum([]byte(ucanStr))
-	return c, "", err
+	return c, ucanStr, err
 }
 
 func (uc *Ucan) Equals(other *Ucan) bool {
