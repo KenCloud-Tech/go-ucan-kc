@@ -15,12 +15,18 @@ var DefaultPrefix = cid.Prefix{
 
 type UcanStore interface {
 	ReadUcan(c cid.Cid) (*Ucan, error)
-	WriteUcan(uc *Ucan) (cid.Cid, error)
+	WriteUcan(uc *Ucan, prefix *cid.Prefix) (cid.Cid, error)
 	ReadUcanStr(c cid.Cid) (string, error)
-	WriteUcanStr(str string) (cid.Cid, error)
+	WriteUcanStr(str string, prefix *cid.Prefix) (cid.Cid, error)
 }
 
 var _ UcanStore = &MemoryStore{}
+
+func NewMemoryStore() *MemoryStore {
+	return &MemoryStore{
+		make(map[cid.Cid]string),
+	}
+}
 
 type MemoryStore struct {
 	store map[cid.Cid]string
@@ -34,8 +40,8 @@ func (m MemoryStore) ReadUcan(c cid.Cid) (*Ucan, error) {
 	}
 }
 
-func (m MemoryStore) WriteUcan(uc *Ucan) (cid.Cid, error) {
-	c, str, err := uc.ToCid(nil)
+func (m MemoryStore) WriteUcan(uc *Ucan, prefix *cid.Prefix) (cid.Cid, error) {
+	c, str, err := uc.ToCid(prefix)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -51,12 +57,15 @@ func (m MemoryStore) ReadUcanStr(c cid.Cid) (string, error) {
 	}
 }
 
-func (m MemoryStore) WriteUcanStr(str string) (cid.Cid, error) {
+func (m MemoryStore) WriteUcanStr(str string, prefix *cid.Prefix) (cid.Cid, error) {
 	_, err := DecodeUcanString(str)
 	if err != nil {
 		return cid.Undef, err
 	}
-	c, err := DefaultPrefix.Sum([]byte(str))
+	if prefix == nil {
+		prefix = &DefaultPrefix
+	}
+	c, err := prefix.Sum([]byte(str))
 	if err != nil {
 		return cid.Undef, err
 	}

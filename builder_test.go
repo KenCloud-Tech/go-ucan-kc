@@ -1,6 +1,8 @@
 package go_ucan_kl_test
 
 import (
+	"github.com/ipfs/go-cid"
+	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 	. "go-ucan-kl"
 	"go-ucan-kl/capability"
@@ -114,6 +116,50 @@ func TestPreventsDuplicateProofs(t *testing.T) {
 	}
 
 	assert.Equal(t, ucanCid.String(), nextUcan.Proofs()[0])
+}
+
+func TestCustomPrefix(t *testing.T) {
+	prefix := &cid.Prefix{
+		Version:  1,
+		Codec:    cid.Raw,
+		MhType:   mh.MURMUR3X64_64,
+		MhLength: -1,
+	}
+	leafUcan, err := DefaultBuilder().
+		IssuedBy(fixtures.TestIdentities.AliceKey).
+		ForAudience(fixtures.TestIdentities.BobDidString).
+		WithLifetime(60).
+		Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	delegatedToken, err := DefaultBuilder().
+		IssuedBy(fixtures.TestIdentities.BobKey).
+		ForAudience(fixtures.TestIdentities.MalloryDidString).
+		WithLifetime(50).
+		WitnessedBy(leafUcan, prefix).
+		Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	store := NewMemoryStore()
+	_, err = store.WriteUcan(leafUcan, prefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = store.WriteUcan(delegatedToken, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ProofChainFromUcan(delegatedToken, nil, store)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 }
 
 //func TestMalloryKey(t *testing.T) {

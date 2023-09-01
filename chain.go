@@ -23,7 +23,7 @@ type ProofChain struct {
 	redelegations map[int]bool
 }
 
-func (pc *ProofChain) validateLinkTo(uc *Ucan) error {
+func (pc *ProofChain) ValidateLinkTo(uc *Ucan) error {
 	audience := pc.ucan.Audience()
 	issuer := uc.Issuer()
 
@@ -152,7 +152,7 @@ func ProofChainFromUcan(uc *Ucan, nowTime *time.Time, store UcanStore) (*ProofCh
 		if err != nil {
 			return nil, err
 		}
-		err = proofChain.validateLinkTo(uc)
+		err = proofChain.ValidateLinkTo(uc)
 		if err != nil {
 			return nil, err
 		}
