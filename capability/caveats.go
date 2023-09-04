@@ -1,6 +1,7 @@
 package capability
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"go-ucan-kl/util"
@@ -46,6 +47,9 @@ func (c *Caveat) equalOrContain(other *Caveat) bool {
 
 func BuildCaveat(val interface{}) (Caveat, error) {
 	if ok, jsonBytes := util.IsJson(val); ok {
+		if bytes.Equal(jsonBytes, []byte(`"{}"`)) {
+			return Caveat{}, nil
+		}
 		mp := make(map[string]interface{})
 		err := json.Unmarshal(jsonBytes, &mp)
 		if err != nil {

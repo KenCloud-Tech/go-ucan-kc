@@ -23,9 +23,11 @@ func (e EmailAddress) Contains(other Scope) bool {
 }
 
 func (e EmailAddress) ParseScope(url url.URL) (Scope, error) {
+	url.EscapedPath()
 	switch url.Scheme {
+
 	case "mailto":
-		return &EmailAddress{url.Path}, nil
+		return &EmailAddress{url.Opaque}, nil
 	default:
 		return nil, fmt.Errorf("Could not interpret URI as an email address: %s", url.String())
 	}
