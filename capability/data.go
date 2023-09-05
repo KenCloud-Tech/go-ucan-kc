@@ -1,14 +1,22 @@
 package capability
 
 import (
-	"encoding/json"
 	"fmt"
+	"go-ucan-kl/util"
 )
 
 type Capability struct {
 	Resource string
 	Ability  string
 	Caveat   interface{}
+}
+
+func NewCapability(resource string, ability string, caveat interface{}) *Capability {
+	return &Capability{
+		Resource: resource,
+		Ability:  ability,
+		Caveat:   caveat,
+	}
 }
 
 // Abilities
@@ -84,8 +92,11 @@ func BuildCapsFromArray(capArray []Capability) (Capabilities, error) {
 		}
 
 		// todo not sure, check whether Caveat is a json object
-		if !json.Valid(caveat.([]byte)) {
-			return nil, fmt.Errorf("Caveat must be an json object, %v", caveat)
+		//if !json.Valid(caveat.([]byte)) {
+		//	return nil, fmt.Errorf("Caveat must be an json object, %v", caveat)
+		//}
+		if ok, _ := util.IsJson(caveat); !ok {
+			return nil, fmt.Errorf("caveat must be an json object, but got: %v", caveat)
 		}
 
 		if _, ok := resource[ability]; ok {

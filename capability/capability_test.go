@@ -196,3 +196,179 @@ func TestFindsTheRightProofChainForTheOriginator(t *testing.T) {
 	})
 
 }
+
+func TestReportsAllChainOptions(t *testing.T) {
+	store := NewMemoryStore()
+	sendEmailAsAlice, err := capability.EmailSemantics.Parse("mailto:alice@email.com", "email/send", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	leafUcanAlice, err := DefaultBuilder().
+		IssuedBy(fixtures.TestIdentities.AliceKey).
+		ForAudience(fixtures.TestIdentities.MalloryDidString).
+		WithLifetime(60).
+		ClaimingCapability(sendEmailAsAlice.ToCapability()).
+		Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	leafUcanBob, err := DefaultBuilder().
+		IssuedBy(fixtures.TestIdentities.BobKey).
+		ForAudience(fixtures.TestIdentities.MalloryDidString).
+		WithLifetime(60).
+		ClaimingCapability(sendEmailAsAlice.ToCapability()).
+		Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ucan, err := DefaultBuilder().
+		IssuedBy(fixtures.TestIdentities.MalloryKey).
+		ForAudience(fixtures.TestIdentities.AliceDidString).
+		WithLifetime(40).
+		ClaimingCapability(sendEmailAsAlice.ToCapability()).
+		WitnessedBy(leafUcanBob, nil).
+		WitnessedBy(leafUcanAlice, nil).
+		Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ucanStr, err := ucan.Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = store.WriteUcan(leafUcanAlice, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = store.WriteUcan(leafUcanBob, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pc, err := ProofChainFromUcanStr(ucanStr, nil, store)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	capInfos, err := ReduceCapabilities[capability.EmailAddress, capability.EmailAction](pc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, len(capInfos), 1)
+
+	capInfo := capInfos[0]
+	assert.Equal(t, &CapabilityInfo{
+		Originators: map[string]bool{fixtures.TestIdentities.AliceDidString: true, fixtures.TestIdentities.BobDidString: true},
+		NotBefore:   ucan.NotBefore(),
+		Expires:     ucan.Expires(),
+		Capability:  *sendEmailAsAlice,
+	}, capInfo)
+
+}
+
+func TestValidatesCaveats(t *testing.T) {
+	resource := "mailto:alice@email.com"
+	ability := "email/send"
+	noCaveat := capability.NewCapability(resource, ability, "{}")
+	xCaveat := capability.NewCapability(resource, ability, `{"x":true}`)
+	yCaveat := capability.NewCapability(resource, ability, `{"y":true}`)
+	zCaveat := capability.NewCapability(resource, ability, `{"z":true}`)
+	yzCaveat := capability.NewCapability(resource, ability, `{"y":true, "z": true}`)
+
+	//valid := make([][2][]capability.Capability, 0)
+	valid := [][][]*capability.Capability{
+		{{noCaveat}, {noCaveat}},
+		{{xCaveat}, {xCaveat}},
+		{{noCaveat}, {xCaveat}},
+		{{xCaveat, yCaveat}, {xCaveat}},
+		{{xCaveat, yCaveat}, {xCaveat, yzCaveat}},
+	}
+
+	invalid := [][][]*capability.Capability{
+		{{xCaveat}, {noCaveat}},
+		{{xCaveat}, {yCaveat}},
+		{{xCaveat, yCaveat}, {xCaveat, yCaveat, zCaveat}},
+	}
+
+	for _, caps := range valid {
+		successful := testCapabilitiesDelegation(t, caps[0], caps[1])
+		assert.True(t, successful)
+	}
+
+	for _, caps := range invalid {
+		successful := testCapabilitiesDelegation(t, caps[0], caps[1])
+		assert.True(t, !successful)
+	}
+}
+
+func testCapabilitiesDelegation(t *testing.T, proofCapabilities []*capability.Capability, delegatedCapabilities []*capability.Capability) bool {
+	store := NewMemoryStore()
+
+	proofUcan, err := DefaultBuilder().
+		IssuedBy(fixtures.TestIdentities.AliceKey).
+		ForAudience(fixtures.TestIdentities.MalloryDidString).
+		WithLifetime(60).
+		ClaimingCapabilities(proofCapabilities).
+		Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ucan, err := DefaultBuilder().
+		IssuedBy(fixtures.TestIdentities.MalloryKey).
+		ForAudience(fixtures.TestIdentities.AliceDidString).
+		WithLifetime(50).
+		WitnessedBy(proofUcan, nil).
+		ClaimingCapabilities(delegatedCapabilities).
+		Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = store.WriteUcan(proofUcan, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = store.WriteUcan(ucan, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pc, err := ProofChainFromUcan(ucan, nil, store)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return enablesCapabilities(t, pc, fixtures.TestIdentities.AliceDidString, delegatedCapabilities)
+}
+
+func enablesCapabilities(t *testing.T, pc *ProofChain, ori string, desiredCaps []*capability.Capability) bool {
+	capInfos, err := ReduceCapabilities[capability.EmailAddress, capability.EmailAction](pc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, desiredCap := range desiredCaps {
+		hasCap := false
+		capView, err := capability.EmailSemantics.ParseCapability(desiredCap)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, info := range capInfos {
+			if info.Originators[ori] && info.Capability.Enables(capView) {
+				hasCap = true
+				break
+			}
+		}
+		if !hasCap {
+			return false
+		}
+	}
+	return true
+}
