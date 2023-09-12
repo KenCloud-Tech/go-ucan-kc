@@ -1,14 +1,17 @@
 package capability
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
+	"go-ucan-kl/util"
 	"net/url"
 	"strings"
 )
 
 var (
 	TypeParseError = fmt.Errorf("type parse error")
+
+	NullJson = []byte("{}")
 )
 
 type Scope interface {
@@ -43,7 +46,8 @@ func (ru *ResourceUri) Scope() Scope {
 type CapabilityView struct {
 	Resource Resource
 	Ability  Ability
-	Caveat   interface{}
+	// Caveat must be json bytes
+	Caveat []byte
 }
 
 func (cv *CapabilityView) Enables(other *CapabilityView) bool {
@@ -175,26 +179,30 @@ func (cs CapabilitySemantics[S, A]) extractDid(path string) (string, string, err
 	return strings.Join(pathParts[:3], ":"), strings.Join(pathParts[3:], ""), nil
 }
 
-func (cs CapabilitySemantics[S, A]) parseCaveat(caveat interface{}) interface{} {
-	var jsonBytes []byte
-	switch caveat.(type) {
-	case string:
-		jsonBytes = []byte(caveat.(string))
-	case []byte:
-		jsonBytes = caveat.([]byte)
+func (cs CapabilitySemantics[S, A]) parseCaveat(caveat []byte) []byte {
+	//var jsonBytes []byte
+	//switch caveat.(type) {
+	//case string:
+	//	jsonBytes = []byte(caveat.(string))
+	//case []byte:
+	//	jsonBytes = caveat.([]byte)
+	//}
+	//if json.Valid(jsonBytes) {
+	//	return jsonBytes
+	//} else {
+	//	return NullJson
+	//}
+
+	if caveat == nil || bytes.Equal(caveat, []byte("")) || bytes.Equal(caveat, NullJson) {
+		return NullJson
 	}
-	if json.Valid(jsonBytes) {
+	if util.IsJsonObject(caveat) {
 		return caveat
-	} else {
-		nullJson, err := json.Marshal("{}")
-		if err != nil {
-			panic(err.Error())
-		}
-		return nullJson
 	}
+	panic(fmt.Sprintf("%s is not json object", caveat))
 }
 
-func (cs CapabilitySemantics[S, A]) Parse(resource string, ability string, caveat interface{}) (*CapabilityView, error) {
+func (cs CapabilitySemantics[S, A]) Parse(resource string, ability string, caveat []byte) (*CapabilityView, error) {
 	uri, err := url.Parse(resource)
 	if err != nil {
 		return nil, err
@@ -237,6 +245,10 @@ func (cs CapabilitySemantics[S, A]) Parse(resource string, ability string, cavea
 		return nil, fmt.Errorf("%s : failed to parse ability:%s as %T, err: %v", TypeParseError, ability, abi, err)
 	}
 
+	//capCav, err := cs.parseCaveat(caveat)
+	//if err != nil {
+	//	return nil, err
+	//}
 	cv := &CapabilityView{
 		Resource: *res,
 		Ability:  capAbi,
@@ -246,5 +258,5 @@ func (cs CapabilitySemantics[S, A]) Parse(resource string, ability string, cavea
 }
 
 func (cs CapabilitySemantics[S, A]) ParseCapability(cap *Capability) (*CapabilityView, error) {
-	return cs.Parse(cap.Resource, cap.Ability, cap.Caveat)
+	return cs.Parse(cap.Resource, cap.Ability, util.CaveatBytes(cap.Caveat))
 }

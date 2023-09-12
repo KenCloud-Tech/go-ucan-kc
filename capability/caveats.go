@@ -45,9 +45,9 @@ func (c *Caveat) equalOrContain(other *Caveat) bool {
 	return true
 }
 
-func BuildCaveat(val interface{}) (Caveat, error) {
+func BuildCaveat(val []byte) (Caveat, error) {
 	if ok, jsonBytes := util.IsJson(val); ok {
-		if bytes.Equal(jsonBytes, []byte(`"{}"`)) {
+		if bytes.Equal(jsonBytes, NullJson) {
 			return Caveat{}, nil
 		}
 		mp := make(map[string]interface{})

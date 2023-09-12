@@ -117,7 +117,7 @@ func (ub *UcanBuilder) DelegatingFrom(authority *Ucan, prefix *cid.Prefix) *Ucan
 	}
 	ub.proofs = append(ub.proofs, c.String())
 	prfIdx := len(ub.proofs) - 1
-	capability, err := ProofDelegationSemantics.Parse(fmt.Sprintf("prf:%d", prfIdx), "ucan/DELEGATE", nil)
+	capability, err := ProofDelegationSemantics.Parse(fmt.Sprintf("prf:%d", prfIdx), "ucan/DELEGATE", []byte(""))
 	if err != nil {
 		panic(err.Error())
 	}

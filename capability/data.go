@@ -1,6 +1,7 @@
 package capability
 
 import (
+	"encoding/json"
 	"fmt"
 	"go-ucan-kl/util"
 )
@@ -11,16 +12,23 @@ type Capability struct {
 	Caveat   interface{}
 }
 
-func NewCapability(resource string, ability string, caveat interface{}) *Capability {
+func NewCapability(resource string, ability string, caveat []byte) *Capability {
+	isJson, jsonBytes := util.IsJson(caveat)
+	if !isJson {
+		panic(fmt.Sprintf("caveat must be json object, but got: %v", caveat))
+	}
 	return &Capability{
 		Resource: resource,
 		Ability:  ability,
-		Caveat:   caveat,
+		// todo: if cav is not string(json object), get error while ucan unmarshal
+		Caveat: string(jsonBytes),
 	}
 }
 
 // Abilities
 type Abilities map[string][]interface{}
+
+//type Caveat map[string]interface{}
 
 // Capabilities is a set of all Capabilities
 //
@@ -91,10 +99,6 @@ func BuildCapsFromArray(capArray []Capability) (Capabilities, error) {
 			resource = res
 		}
 
-		// todo not sure, check whether Caveat is a json object
-		//if !json.Valid(caveat.([]byte)) {
-		//	return nil, fmt.Errorf("Caveat must be an json object, %v", caveat)
-		//}
 		if ok, _ := util.IsJson(caveat); !ok {
 			return nil, fmt.Errorf("caveat must be an json object, but got: %v", caveat)
 		}
@@ -106,5 +110,54 @@ func BuildCapsFromArray(capArray []Capability) (Capabilities, error) {
 		}
 	}
 
+	return caps, nil
+}
+
+func BuildCapsFromJsonBytes(val []byte) (Capabilities, error) {
+	caps := make(Capabilities)
+	err := json.Unmarshal(val, &caps)
+	if err != nil {
+		return nil, err
+	}
+
+	// validate and set
+	for res, abilities := range caps {
+		if abilities == nil || len(abilities) == 0 {
+			return nil, fmt.Errorf("resource must have at least one ability")
+		}
+		for abiName, cavs := range abilities {
+			if cavs == nil || len(cavs) == 0 {
+				if len(abilities) == 1 {
+					// invalid res
+					delete(caps, res)
+				} else {
+					// invalid ability
+					delete(abilities, abiName)
+				}
+				continue
+			}
+			for idx, cav := range cavs {
+				// todo: if cav is not string(json object), get error while ucan unmarshal
+				switch cav.(type) {
+				case string:
+				case []byte:
+					cavs[idx] = string(cav.([]byte))
+				default:
+					cavBytes, err := json.Marshal(cav)
+					if err != nil {
+						return nil, fmt.Errorf("invalid caveat: %v", cav)
+					}
+					if json.Valid(cavBytes) {
+						cavs[idx] = string(cavBytes)
+					} else {
+						return nil, fmt.Errorf("caveat must be json object")
+					}
+				}
+				if !util.IsJsonObject([]byte(cavs[idx].(string))) {
+					return nil, fmt.Errorf("caveat should be json object, but got: %v", cavs[idx])
+				}
+			}
+		}
+	}
 	return caps, nil
 }

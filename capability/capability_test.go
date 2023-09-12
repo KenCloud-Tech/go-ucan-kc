@@ -10,7 +10,7 @@ import (
 )
 
 func TestSimpleExample(t *testing.T) {
-	sendEmailAsAlice, err := capability.EmailSemantics.Parse("mailto:alice@email.com", "email/send", nil)
+	sendEmailAsAlice, err := capability.EmailSemantics.Parse("mailto:alice@email.com", "email/send", []byte(""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestSimpleExample(t *testing.T) {
 }
 
 func TestReportTheFirstIssuerInTheChainAsOriginator(t *testing.T) {
-	sendEmailAsBob, err := capability.EmailSemantics.Parse("mailto:bob@email.com", "email/send", nil)
+	sendEmailAsBob, err := capability.EmailSemantics.Parse("mailto:bob@email.com", "email/send", []byte(""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,11 +120,11 @@ func TestReportTheFirstIssuerInTheChainAsOriginator(t *testing.T) {
 
 func TestFindsTheRightProofChainForTheOriginator(t *testing.T) {
 	store := NewMemoryStore()
-	sendEmailAsBob, err := capability.EmailSemantics.Parse("mailto:bob@email.com", "email/send", nil)
+	sendEmailAsBob, err := capability.EmailSemantics.Parse("mailto:bob@email.com", "email/send", []byte(""))
 	if err != nil {
 		t.Fatal(err)
 	}
-	sendEmailAsAlice, err := capability.EmailSemantics.Parse("mailto:alice@email.com", "email/send", nil)
+	sendEmailAsAlice, err := capability.EmailSemantics.Parse("mailto:alice@email.com", "email/send", []byte(""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +199,7 @@ func TestFindsTheRightProofChainForTheOriginator(t *testing.T) {
 
 func TestReportsAllChainOptions(t *testing.T) {
 	store := NewMemoryStore()
-	sendEmailAsAlice, err := capability.EmailSemantics.Parse("mailto:alice@email.com", "email/send", nil)
+	sendEmailAsAlice, err := capability.EmailSemantics.Parse("mailto:alice@email.com", "email/send", []byte(""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,11 +275,11 @@ func TestReportsAllChainOptions(t *testing.T) {
 func TestValidatesCaveats(t *testing.T) {
 	resource := "mailto:alice@email.com"
 	ability := "email/send"
-	noCaveat := capability.NewCapability(resource, ability, "{}")
-	xCaveat := capability.NewCapability(resource, ability, `{"x":true}`)
-	yCaveat := capability.NewCapability(resource, ability, `{"y":true}`)
-	zCaveat := capability.NewCapability(resource, ability, `{"z":true}`)
-	yzCaveat := capability.NewCapability(resource, ability, `{"y":true, "z": true}`)
+	noCaveat := capability.NewCapability(resource, ability, []byte("{}"))
+	xCaveat := capability.NewCapability(resource, ability, []byte(`{"x":true}`))
+	yCaveat := capability.NewCapability(resource, ability, []byte(`{"y":true}`))
+	zCaveat := capability.NewCapability(resource, ability, []byte(`{"z":true}`))
+	yzCaveat := capability.NewCapability(resource, ability, []byte(`{"y":true, "z": true}`))
 
 	//valid := make([][2][]capability.Capability, 0)
 	valid := [][][]*capability.Capability{
@@ -313,7 +313,7 @@ func testCapabilitiesDelegation(t *testing.T, proofCapabilities []*capability.Ca
 	proofUcan, err := DefaultBuilder().
 		IssuedBy(fixtures.TestIdentities.AliceKey).
 		ForAudience(fixtures.TestIdentities.MalloryDidString).
-		WithLifetime(60).
+		WithLifetime(600).
 		ClaimingCapabilities(proofCapabilities).
 		Build()
 	if err != nil {
@@ -323,7 +323,7 @@ func testCapabilitiesDelegation(t *testing.T, proofCapabilities []*capability.Ca
 	ucan, err := DefaultBuilder().
 		IssuedBy(fixtures.TestIdentities.MalloryKey).
 		ForAudience(fixtures.TestIdentities.AliceDidString).
-		WithLifetime(50).
+		WithLifetime(500).
 		WitnessedBy(proofUcan, nil).
 		ClaimingCapabilities(delegatedCapabilities).
 		Build()
@@ -371,4 +371,80 @@ func enablesCapabilities(t *testing.T, pc *ProofChain, ori string, desiredCaps [
 		}
 	}
 	return true
+}
+
+func TestCastBetweenMapAndSequence(t *testing.T) {
+	capFoo := capability.NewCapability("example://foo", "ability/foo", []byte("{}"))
+	capBarOne := capability.NewCapability("example://bar", "ability/bar", []byte(`{"beep":1}`))
+	capBarTwo := capability.NewCapability("example://bar", "ability/bar", []byte(`{"boop":1}`))
+
+	capSequence := []capability.Capability{*capBarOne, *capBarTwo, *capFoo}
+	capsFromJsonBytes, err := capability.BuildCapsFromJsonBytes([]byte(`
+	{
+		"example://bar":
+			{"ability/bar":[{"beep":1}, {"boop":1}]},
+		"example://foo": 
+			{ "ability/foo": [{}] }
+	}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, capsFromJsonBytes.ToCapsArray(), capSequence)
+
+	capsFromSequence, err := capability.BuildCapsFromArray(capSequence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, capsFromSequence, capsFromJsonBytes)
+}
+
+func TestRejectsNonCompliantJson(t *testing.T) {
+	failureCases := []struct {
+		val     []byte
+		message string
+	}{
+		{
+			[]byte(`[]`),
+			"capabilities must be json",
+		},
+		{
+			[]byte(`"{resource:foo":[]}`),
+			"abilities must be map",
+		},
+		{
+			[]byte(`{"resource:foo":{}}`),
+			"resource must have at least one ability",
+		},
+		{
+			[]byte(`{"resource:foo":{"ability/read":{}}}`),
+			"caveats must be array",
+		},
+		{
+			[]byte(`{"resource:foo":{"ability/read":[1]}}`),
+			"caveat must be json object",
+		},
+	}
+
+	for _, testCase := range failureCases {
+		_, err := capability.BuildCapsFromJsonBytes(testCase.val)
+		assert.Error(t, err, testCase.message)
+	}
+}
+
+func TestFiltersOutEmptyCaveatsWhenIterating(t *testing.T) {
+	capFromJsonOne, err := capability.BuildCapsFromJsonBytes([]byte(`{
+		"example://bar": { "ability/bar": [{}] },
+        "example://foo": { "ability/foo": [] }
+	}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	capFromJsonTwo, err := capability.BuildCapsFromJsonBytes([]byte(`{
+		"example://bar": { "ability/bar": [{}] }
+	}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, capFromJsonOne, capFromJsonTwo)
 }

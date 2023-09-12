@@ -55,7 +55,7 @@ func TestUcanTooEarly(t *testing.T) {
 }
 
 func TestUcanSerializedJsonAndDeserialized(t *testing.T) {
-	sendEmailAsAlice, err := CapabilitySemantics[EmailAddress, EmailAction]{}.Parse("mailto:alice@email.com", "email/send", nil)
+	sendEmailAsAlice, err := CapabilitySemantics[EmailAddress, EmailAction]{}.Parse("mailto:alice@email.com", "email/send", []byte(""))
 	if err != nil {
 		t.Fatal(err.Error())
 	}

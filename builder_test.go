@@ -20,11 +20,11 @@ func TestBuildsSimpleRoundTrip(t *testing.T) {
 		"def/challenge": factTwo,
 	}
 
-	capA, err := capability.EmailSemantics.Parse("mailto:alice@gmail.com", "email/send", nil)
+	capA, err := capability.EmailSemantics.Parse("mailto:alice@gmail.com", "email/send", []byte(""))
 	if err != nil {
 		t.Fatal(err)
 	}
-	capB, err := capability.WNFSSemantics.Parse("wnfs://alice.fission.name/public", "wnfs/super_user", nil)
+	capB, err := capability.WNFSSemantics.Parse("wnfs://alice.fission.name/public", "wnfs/super_user", []byte(""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestBuildsWithLiftetimeInSeconds(t *testing.T) {
 }
 
 func TestPreventsDuplicateProofs(t *testing.T) {
-	parentCap, err := capability.WNFSSemantics.Parse("wnfs://alice.fission.name/public", "wnfs/super_user", nil)
+	parentCap, err := capability.WNFSSemantics.Parse("wnfs://alice.fission.name/public", "wnfs/super_user", []byte(""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,11 +89,11 @@ func TestPreventsDuplicateProofs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	attenuatedCapOne, err := capability.WNFSSemantics.Parse("wnfs://alice.fission.name/public/Apps", "wnfs/create", nil)
+	attenuatedCapOne, err := capability.WNFSSemantics.Parse("wnfs://alice.fission.name/public/Apps", "wnfs/create", []byte(""))
 	if err != nil {
 		t.Fatal(err)
 	}
-	attenuatedCapTwo, err := capability.WNFSSemantics.Parse("wnfs://alice.fission.name/public/Domains", "wnfs/create", nil)
+	attenuatedCapTwo, err := capability.WNFSSemantics.Parse("wnfs://alice.fission.name/public/Domains", "wnfs/create", []byte(""))
 	if err != nil {
 		t.Fatal(err)
 	}
