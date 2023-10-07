@@ -69,7 +69,8 @@ func (cv *CapabilityView) ToCapability() *Capability {
 	return &Capability{
 		Resource: cv.Resource.ToString(),
 		Ability:  cv.Ability.ToString(),
-		Caveat:   cv.Caveat,
+		// todo: if bytes json deserialize will get error
+		Caveat: string(cv.Caveat),
 	}
 }
 

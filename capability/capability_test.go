@@ -1,6 +1,7 @@
 package capability_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	. "go-ucan-kl"
@@ -447,4 +448,21 @@ func TestFiltersOutEmptyCaveatsWhenIterating(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, capFromJsonOne, capFromJsonTwo)
+}
+
+func TestCapsSerAndDeser(t *testing.T) {
+	sendEmailAsAlice, err := capability.EmailSemantics.Parse("mailto:alice@email.com", "email/send", []byte(`{"1":231}`))
+	assert.NoError(t, err)
+	emailCap := sendEmailAsAlice.ToCapability()
+	caps, err := capability.BuildCapsFromArray([]capability.Capability{*emailCap})
+	assert.NoError(t, err)
+
+	capsBytes, err := json.Marshal(caps)
+	assert.NoError(t, err)
+
+	t.Logf("%s", capsBytes)
+
+	reCaps := make(capability.Capabilities)
+	err = json.Unmarshal(capsBytes, &reCaps)
+	t.Logf("%#v", reCaps)
 }
