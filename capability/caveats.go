@@ -4,8 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"go-ucan-kl/util"
-	//go_ucan_kl "go-ucan-kl"
+	"github.com/KenCloud-Tech/go-ucan-kc/util"
 )
 
 type Caveat struct {

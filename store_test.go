@@ -1,8 +1,8 @@
-package go_ucan_kl
+package ucan
 
 import (
+	"github.com/KenCloud-Tech/go-ucan-kc/test/fixtures"
 	"github.com/stretchr/testify/assert"
-	"go-ucan-kl/test/fixtures"
 	"testing"
 )
 

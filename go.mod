@@ -1,4 +1,4 @@
-module go-ucan-kl
+module github.com/KenCloud-Tech/go-ucan-kc
 
 go 1.20
 

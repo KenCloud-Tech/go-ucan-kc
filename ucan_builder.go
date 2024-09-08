@@ -1,12 +1,12 @@
-package go_ucan_kl
+package ucan
 
 import (
 	"encoding/json"
 	"fmt"
+	. "github.com/KenCloud-Tech/go-ucan-kc/capability"
+	didkey "github.com/KenCloud-Tech/go-ucan-kc/key"
 	"github.com/ipfs/go-cid"
 	mb "github.com/multiformats/go-multibase"
-	. "go-ucan-kl/capability"
-	didkey "go-ucan-kl/key"
 	"math/rand"
 	"time"
 )

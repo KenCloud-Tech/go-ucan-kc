@@ -1,12 +1,12 @@
-package go_ucan_kl_test
+package ucan_test
 
 import (
+	. "github.com/KenCloud-Tech/go-ucan-kc"
+	"github.com/KenCloud-Tech/go-ucan-kc/capability"
+	"github.com/KenCloud-Tech/go-ucan-kc/test/fixtures"
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
-	. "go-ucan-kl"
-	"go-ucan-kl/capability"
-	"go-ucan-kl/test/fixtures"
 	"testing"
 	"time"
 )

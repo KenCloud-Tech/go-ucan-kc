@@ -3,7 +3,7 @@ package capability
 import (
 	"encoding/json"
 	"fmt"
-	"go-ucan-kl/util"
+	"github.com/KenCloud-Tech/go-ucan-kc/util"
 )
 
 type Capability struct {

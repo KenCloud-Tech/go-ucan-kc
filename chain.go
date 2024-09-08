@@ -1,9 +1,9 @@
-package go_ucan_kl
+package ucan
 
 import (
 	"fmt"
+	. "github.com/KenCloud-Tech/go-ucan-kc/capability"
 	"github.com/ipfs/go-cid"
-	. "go-ucan-kl/capability"
 	"golang.org/x/exp/maps"
 
 	"strings"

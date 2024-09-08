@@ -3,10 +3,10 @@ package capability_test
 import (
 	"encoding/json"
 	"fmt"
+	. "github.com/KenCloud-Tech/go-ucan-kc"
+	"github.com/KenCloud-Tech/go-ucan-kc/capability"
+	"github.com/KenCloud-Tech/go-ucan-kc/test/fixtures"
 	"github.com/stretchr/testify/assert"
-	. "go-ucan-kl"
-	"go-ucan-kl/capability"
-	"go-ucan-kl/test/fixtures"
 	"testing"
 )
 

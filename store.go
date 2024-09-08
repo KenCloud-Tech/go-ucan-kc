@@ -1,4 +1,4 @@
-package go_ucan_kl
+package ucan
 
 import (
 	"fmt"

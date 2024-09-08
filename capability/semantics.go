@@ -3,7 +3,7 @@ package capability
 import (
 	"bytes"
 	"fmt"
-	"go-ucan-kl/util"
+	"github.com/KenCloud-Tech/go-ucan-kc/util"
 	"net/url"
 	"strings"
 )

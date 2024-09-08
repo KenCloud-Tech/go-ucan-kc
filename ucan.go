@@ -1,13 +1,13 @@
-package go_ucan_kl
+package ucan
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/KenCloud-Tech/go-ucan-kc/capability"
+	"github.com/KenCloud-Tech/go-ucan-kc/key"
 	"github.com/ipfs/go-cid"
 	mb "github.com/multiformats/go-multibase"
-	"go-ucan-kl/capability"
-	"go-ucan-kl/key"
 	"strings"
 	"time"
 )

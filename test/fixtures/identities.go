@@ -1,6 +1,6 @@
 package fixtures
 
-import didkey "go-ucan-kl/key"
+import didkey "github.com/KenCloud-Tech/go-ucan-kc/key"
 
 type Identities struct {
 	AliceKey   didkey.KeyMaterial
